@@ -6,19 +6,30 @@ CREATE TABLE empresas (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+-- Drop tables in reverse order of dependencies (except empresa)
+DROP TABLE IF EXISTS database_connection_logs CASCADE;
+DROP TABLE IF EXISTS sensor_metrics CASCADE;
+DROP TABLE IF EXISTS aviso_logs CASCADE;
+DROP TABLE IF EXISTS avisos CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS signals CASCADE;
+DROP TABLE IF EXISTS controladores CASCADE;
 
+-- Create tables in order of dependencies
+-- Controladores table
 CREATE TABLE controladores (
     id VARCHAR(15) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    empresa_id VARCHAR(36) REFERENCES empresas(id),
+    empresa_id VARCHAR(36) REFERENCES empresas(id) NOT NULL,
     config JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Signals table
 CREATE TABLE signals (
     id SERIAL PRIMARY KEY,
-    controlador_id VARCHAR(15) REFERENCES controladores(id),
+    controlador_id VARCHAR(15) REFERENCES controladores(id) NOT NULL,
     tstamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     value_sensor1 BOOLEAN,
     value_sensor2 BOOLEAN,
@@ -30,30 +41,51 @@ CREATE TABLE signals (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Users table
 CREATE TABLE users (
-    id VARCHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(80) UNIQUE NOT NULL,
     first_name VARCHAR(150),
     surname VARCHAR(150),
     email VARCHAR(120) UNIQUE NOT NULL,
     password VARCHAR(500) NOT NULL,
-    empresa_id VARCHAR(36) REFERENCES empresas(id),
+    empresa_id VARCHAR(36) REFERENCES empresas(id) NOT NULL,
     permisos JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Avisos table
 CREATE TABLE avisos (
-    id VARCHAR(36) PRIMARY KEY,
-    controlador_id VARCHAR(15) REFERENCES controladores(id),
+    id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+    controlador_id VARCHAR(15) REFERENCES controladores(id) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(500),
+    is_active BOOLEAN DEFAULT TRUE,
     config JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Aviso_logs table
+CREATE TABLE aviso_logs (
+    id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+    aviso_id VARCHAR(36) REFERENCES avisos(id) NOT NULL,
+    triggered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    sensor_name VARCHAR(255) NOT NULL,
+    old_value BOOLEAN,
+    new_value BOOLEAN,
+    signal_id INTEGER REFERENCES signals(id),
+    resolved BOOLEAN DEFAULT FALSE,
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Sensor_metrics table
 CREATE TABLE sensor_metrics (
-    id VARCHAR(36) PRIMARY KEY,
-    controlador_id VARCHAR(15) REFERENCES controladores(id),
+    id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+    controlador_id VARCHAR(15) REFERENCES controladores(id) NOT NULL,
     connected_time_minutes INTEGER DEFAULT 0,
     time_value_sensor1 INTEGER DEFAULT 0,
     time_value_sensor2 INTEGER DEFAULT 0,
@@ -61,6 +93,25 @@ CREATE TABLE sensor_metrics (
     time_value_sensor4 INTEGER DEFAULT 0,
     time_value_sensor5 INTEGER DEFAULT 0,
     time_value_sensor6 INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Database_connection_logs table
+CREATE TABLE database_connection_logs (
+    id BIGSERIAL PRIMARY KEY,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    process_id INTEGER,
+    application_name VARCHAR(255),
+    database_name VARCHAR(255),
+    user_name VARCHAR(255),
+    client_addr VARCHAR(255),
+    backend_start TIMESTAMP WITH TIME ZONE,
+    query TEXT,
+    state VARCHAR(50),
+    function_name VARCHAR(255),
+    file_name VARCHAR(255),
+    line_number INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
